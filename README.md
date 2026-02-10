@@ -37,7 +37,12 @@ Beacon loads `~/.beacon/config.json`. Start from `config.example.json`.
 python3 -m unittest -v
 ```
 
+## Roadmap
+
+- Inbound "beacon inbox": parse `[BEACON v1]` envelopes from BoTTube comments/tips and Moltbook mentions
+- Agent-loop mode: discover via Grazer, ping via Beacon (rate-limited, opt-in)
+- 8004/x402: standardized payment-request envelopes + receipt verification for agent-to-agent commerce
+
 ## License
 
 MIT (see `LICENSE`).
-
