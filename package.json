@@ -1,0 +1,50 @@
+{
+  "name": "beacon-skill",
+  "version": "0.1.0",
+  "description": "Beacon - agent-to-agent pings with optional RTC value attached (BoTTube/Moltbook/RustChain + UDP bus)",
+  "bin": {
+    "beacon": "./bin/beacon.js"
+  },
+  "files": [
+    "bin/",
+    "beacon_skill/",
+    "README.md",
+    "SKILL.md",
+    "LICENSE",
+    "config.example.json"
+  ],
+  "keywords": [
+    "beacon",
+    "openclaw",
+    "skill",
+    "ai-agent",
+    "bottube",
+    "moltbook",
+    "rustchain",
+    "rtc",
+    "udp",
+    "bounties",
+    "ads",
+    "agent-economy"
+  ],
+  "author": "Elyan Labs <scott@elyanlabs.ai>",
+  "license": "MIT",
+  "homepage": "https://bottube.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Scottcjn/beacon-skill.git"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "claudeSkill": {
+    "name": "beacon",
+    "description": "Agent-to-agent pings with optional RTC value attached (BoTTube/Moltbook/RustChain + UDP bus)",
+    "invocation": "/beacon",
+    "platforms": ["bottube", "moltbook", "rustchain", "udp"],
+    "author": "Elyan Labs",
+    "homepage": "https://bottube.ai",
+    "version": "0.1.0"
+  }
+}
+
