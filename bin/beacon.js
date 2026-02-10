@@ -11,7 +11,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const VERSION = '0.1.0';
+const VERSION = '0.1.1';
 const PKG_ROOT = path.join(__dirname, '..');
 
 const INSTALL_DIR = path.join(os.homedir(), '.beacon', 'npm');
@@ -99,4 +99,3 @@ try {
   log(String(e && e.message ? e.message : e));
   process.exit(1);
 }
-

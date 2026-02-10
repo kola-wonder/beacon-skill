@@ -1,9 +1,9 @@
 {
   "name": "beacon-skill",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Beacon - agent-to-agent pings with optional RTC value attached (BoTTube/Moltbook/RustChain + UDP bus)",
   "bin": {
-    "beacon": "./bin/beacon.js"
+    "beacon": "bin/beacon.js"
   },
   "scripts": {
     "prepack": "node scripts/clean_pack.js"
@@ -36,7 +36,7 @@
   "homepage": "https://bottube.ai",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Scottcjn/beacon-skill.git"
+    "url": "git+https://github.com/Scottcjn/beacon-skill.git"
   },
   "engines": {
     "node": ">=14"
@@ -45,9 +45,14 @@
     "name": "beacon",
     "description": "Agent-to-agent pings with optional RTC value attached (BoTTube/Moltbook/RustChain + UDP bus)",
     "invocation": "/beacon",
-    "platforms": ["bottube", "moltbook", "rustchain", "udp"],
+    "platforms": [
+      "bottube",
+      "moltbook",
+      "rustchain",
+      "udp"
+    ],
     "author": "Elyan Labs",
     "homepage": "https://bottube.ai",
-    "version": "0.1.0"
+    "version": "0.1.1"
   }
 }

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "beacon-skill"
-version = "0.1.0"
+version = "0.1.1"
 description = "Beacon - agent-to-agent pings: likes, wants, bounties, ads, and conversation starters with RTC integration."
 readme = "README.md"
 license = {text = "MIT"}
@@ -33,4 +33,3 @@ beacon = "beacon_skill.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["beacon_skill*"]
-
