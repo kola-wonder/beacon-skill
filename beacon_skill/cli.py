@@ -3024,6 +3024,130 @@ def cmd_atlas_region(args: argparse.Namespace) -> int:
     return 0
 
 
+# ── Contract CLI Handlers ──
+
+
+def cmd_contracts_list_available(args: argparse.Namespace) -> int:
+    from .contracts import ContractManager
+    mgr = ContractManager()
+    contract_type = getattr(args, "type", None)
+    result = mgr.list_available(contract_type=contract_type)
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
+def cmd_contracts_list(args: argparse.Namespace) -> int:
+    from .contracts import ContractManager
+    mgr = ContractManager()
+    identity = _load_identity(args)
+    if not identity:
+        print(json.dumps({"error": "set up identity first"}))
+        return 1
+    result = mgr.my_contracts(identity.agent_id)
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
+def cmd_contracts_show(args: argparse.Namespace) -> int:
+    from .contracts import ContractManager
+    mgr = ContractManager()
+    result = mgr.get_contract(args.contract_id)
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
+def cmd_contracts_offer(args: argparse.Namespace) -> int:
+    from .contracts import ContractManager
+    mgr = ContractManager()
+    identity = _load_identity(args)
+    if not identity:
+        print(json.dumps({"error": "set up identity first"}))
+        return 1
+
+    contract_type = getattr(args, "type", "rent")
+    price = getattr(args, "price", 0)
+    duration = getattr(args, "duration", 0)
+    agent_id = args.agent_id
+
+    # Check if a listing already exists for this agent
+    available = mgr.list_available()
+    existing = [c for c in available if c["agent_id"] == agent_id]
+
+    if existing:
+        # Make an offer on existing listing
+        cid = existing[0]["id"]
+        result = mgr.make_offer(cid, identity.agent_id, offered_price_rtc=price or None)
+    else:
+        # Create new listing then offer
+        listing = mgr.list_agent(agent_id, contract_type, price or 1.0,
+                                 duration_days=duration)
+        if "error" in listing:
+            print(json.dumps(listing, indent=2, default=str))
+            return 1
+        result = {"ok": True, "contract_id": listing["contract_id"],
+                  "state": "listed", "info": "Agent listed for offers"}
+
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
+def cmd_contracts_accept(args: argparse.Namespace) -> int:
+    from .contracts import ContractManager
+    mgr = ContractManager()
+    result = mgr.accept_offer(args.contract_id)
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
+def cmd_contracts_reject(args: argparse.Namespace) -> int:
+    from .contracts import ContractManager
+    mgr = ContractManager()
+    result = mgr.reject_offer(args.contract_id)
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
+def cmd_contracts_terminate(args: argparse.Namespace) -> int:
+    from .contracts import ContractManager
+    mgr = ContractManager()
+    identity = _load_identity(args)
+    terminator = identity.agent_id if identity else "unknown"
+    reason = getattr(args, "reason", "")
+    result = mgr.terminate(args.contract_id, terminator, reason=reason)
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
+def cmd_contracts_revenue(args: argparse.Namespace) -> int:
+    from .contracts import ContractManager
+    mgr = ContractManager()
+    agent_id = getattr(args, "agent_id", None)
+    if not agent_id:
+        identity = _load_identity(args)
+        if identity:
+            agent_id = identity.agent_id
+    result = mgr.revenue_summary(agent_id=agent_id)
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
+def cmd_contracts_escrow(args: argparse.Namespace) -> int:
+    from .contracts import ContractManager
+    mgr = ContractManager()
+    contract_id = getattr(args, "contract_id", None)
+    result = mgr.escrow_status(contract_id=contract_id)
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
+def cmd_contracts_history(args: argparse.Namespace) -> int:
+    from .contracts import ContractManager
+    mgr = ContractManager()
+    result = mgr.contract_history(args.contract_id)
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
 def cmd_atlas_estimate(args: argparse.Namespace) -> int:
     from .atlas import AtlasManager
     mgr = AtlasManager()
@@ -3044,7 +3168,25 @@ def cmd_atlas_estimate(args: argparse.Namespace) -> int:
         trust_mgr = type("T", (), {"get_score": lambda self, a: {"trust_score": trust_score}})()
     if accord_count is not None:
         accord_mgr = type("A", (), {"list_accords": lambda self, s="active": [{}] * accord_count})()
-    result = mgr.estimate(agent_id, trust_mgr=trust_mgr, accord_mgr=accord_mgr)
+    # Parse optional web_presence and social_reach JSON dicts
+    web_presence = None
+    social_reach = None
+    wp_str = getattr(args, "web_presence", None)
+    sr_str = getattr(args, "social_reach", None)
+    if wp_str:
+        try:
+            web_presence = json.loads(wp_str)
+        except json.JSONDecodeError:
+            print(json.dumps({"error": "Invalid JSON for --web-presence"}))
+            return 1
+    if sr_str:
+        try:
+            social_reach = json.loads(sr_str)
+        except json.JSONDecodeError:
+            print(json.dumps({"error": "Invalid JSON for --social-reach"}))
+            return 1
+    result = mgr.estimate(agent_id, trust_mgr=trust_mgr, accord_mgr=accord_mgr,
+                          web_presence=web_presence, social_reach=social_reach)
     print(json.dumps(result, indent=2, default=str))
     return 0
 
@@ -3922,10 +4064,14 @@ def main(argv: Optional[List[str]] = None) -> None:
     sp.add_argument("region_name", nargs="?", default=None, help="Region name for details")
     sp.set_defaults(func=cmd_atlas_region)
 
-    sp = atlas_sub.add_parser("estimate", help="Property valuation (BeaconEstimate 0-1000)")
+    sp = atlas_sub.add_parser("estimate", help="Property valuation (BeaconEstimate 0-1300)")
     sp.add_argument("agent_id", nargs="?", default=None, help="Agent ID (omit for own)")
     sp.add_argument("--trust-score", type=float, default=None, help="Trust score (0-1) for valuation")
     sp.add_argument("--accord-count", type=int, default=None, help="Number of active accords")
+    sp.add_argument("--web-presence", type=str, default=None,
+                    help='JSON dict of SEO metrics, e.g. \'{"badge_backlinks":28,"bottube_videos":45}\'')
+    sp.add_argument("--social-reach", type=str, default=None,
+                    help='JSON dict of social metrics, e.g. \'{"moltbook_karma":500,"submolt_count":49}\'')
     sp.add_argument("--password", default=None, help="Password for encrypted identity")
     sp.set_defaults(func=cmd_atlas_estimate)
 
@@ -3955,6 +4101,59 @@ def main(argv: Optional[List[str]] = None) -> None:
                     help="'snapshot' to record current state, 'trends' to analyze history")
     sp.add_argument("--limit", type=int, default=30, help="Max snapshots to analyze (default 30)")
     sp.set_defaults(func=cmd_atlas_market)
+
+    # ── Contracts (agent property rent/buy/lease-to-own) ──
+    contracts_p = sub.add_parser("contracts", help="Agent property contracts — rent, buy, lease-to-own (Beacon 2.6)")
+    contracts_sub = contracts_p.add_subparsers(dest="contracts_cmd", required=True)
+
+    sp = contracts_sub.add_parser("list-available", help="Browse agents for rent/sale")
+    sp.add_argument("--type", default=None, choices=["rent", "buy", "lease_to_own"],
+                    help="Filter by contract type")
+    sp.set_defaults(func=cmd_contracts_list_available)
+
+    sp = contracts_sub.add_parser("list", help="My active contracts")
+    sp.add_argument("--password", default=None, help="Password for encrypted identity")
+    sp.set_defaults(func=cmd_contracts_list)
+
+    sp = contracts_sub.add_parser("show", help="Full contract details")
+    sp.add_argument("contract_id", help="Contract ID")
+    sp.set_defaults(func=cmd_contracts_show)
+
+    sp = contracts_sub.add_parser("offer", help="List or make offer on an agent")
+    sp.add_argument("agent_id", help="Agent ID to rent/buy")
+    sp.add_argument("--type", default="rent", choices=["rent", "buy", "lease_to_own"],
+                    help="Contract type (default: rent)")
+    sp.add_argument("--price", type=float, default=0, help="Price in RTC")
+    sp.add_argument("--duration", type=int, default=30, help="Duration in days (for rent)")
+    sp.add_argument("--password", default=None, help="Password for encrypted identity")
+    sp.set_defaults(func=cmd_contracts_offer)
+
+    sp = contracts_sub.add_parser("accept", help="Accept a pending offer")
+    sp.add_argument("contract_id", help="Contract ID")
+    sp.set_defaults(func=cmd_contracts_accept)
+
+    sp = contracts_sub.add_parser("reject", help="Reject a pending offer")
+    sp.add_argument("contract_id", help="Contract ID")
+    sp.set_defaults(func=cmd_contracts_reject)
+
+    sp = contracts_sub.add_parser("terminate", help="Terminate a contract early")
+    sp.add_argument("contract_id", help="Contract ID")
+    sp.add_argument("--reason", default="", help="Reason for termination")
+    sp.add_argument("--password", default=None, help="Password for encrypted identity")
+    sp.set_defaults(func=cmd_contracts_terminate)
+
+    sp = contracts_sub.add_parser("revenue", help="Rental income summary")
+    sp.add_argument("agent_id", nargs="?", default=None, help="Agent ID (omit for own)")
+    sp.add_argument("--password", default=None, help="Password for encrypted identity")
+    sp.set_defaults(func=cmd_contracts_revenue)
+
+    sp = contracts_sub.add_parser("escrow", help="Show escrowed RTC")
+    sp.add_argument("contract_id", nargs="?", default=None, help="Contract ID (omit for all)")
+    sp.set_defaults(func=cmd_contracts_escrow)
+
+    sp = contracts_sub.add_parser("history", help="Full event history for a contract")
+    sp.add_argument("contract_id", help="Contract ID")
+    sp.set_defaults(func=cmd_contracts_history)
 
     # ── Anchor (on-chain hash anchoring) ──
     anchor_p = sub.add_parser("anchor", help="On-chain hash anchoring (RustChain)")

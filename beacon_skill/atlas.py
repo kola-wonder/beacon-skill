@@ -691,16 +691,20 @@ class AtlasManager:
     def estimate(self, agent_id: str,
                  trust_mgr: Any = None,
                  accord_mgr: Any = None,
-                 heartbeat_mgr: Any = None) -> Dict[str, Any]:
+                 heartbeat_mgr: Any = None,
+                 web_presence: Any = None,
+                 social_reach: Any = None) -> Dict[str, Any]:
         """Calculate property value estimate for an agent.
 
-        The BeaconEstimate is a composite score (0-1000) based on:
-          - Location value:  City population & type (0-200)
-          - Scarcity bonus:  Inverse of domain competition (0-150)
-          - Network quality: Average calibration with neighbors (0-200)
-          - Reputation:      Trust score from interactions (0-200)
-          - Uptime:          Heartbeat consistency (0-100)
-          - Bonds:           Active accord count (0-150)
+        The BeaconEstimate is a composite score (0-1300) based on:
+          - Location value:   City population & type (0-200)
+          - Scarcity bonus:   Inverse of domain competition (0-150)
+          - Network quality:  Average calibration with neighbors (0-200)
+          - Reputation:       Trust score from interactions (0-200)
+          - Uptime:           Heartbeat consistency (0-100)
+          - Bonds:            Active accord count (0-150)
+          - Web presence:     SEO footprint — badges, embeds, videos (0-150)
+          - Social reach:     Moltbook karma, submolts, engagement (0-150)
 
         Like Zillow's Zestimate, this is an algorithmic estimate, not gospel.
         """
@@ -796,20 +800,70 @@ class AtlasManager:
         else:
             components["bonds"] = 0.0
 
-        # Total BeaconEstimate (0-1000)
-        total = sum(components.values())
-        total = round(min(total, 1000.0), 1)
+        # 7. Web Presence (0-150) — SEO footprint
+        if web_presence and isinstance(web_presence, dict):
+            wp = 0.0
+            # Badge backlinks (repos/forks carrying agent badges) — log2 scale
+            backlinks = web_presence.get("badge_backlinks", 0)
+            wp += min(math.log2(max(backlinks, 0) + 1) / 5.0, 1.0) * 50
+            # oEmbed usage (external embeds)
+            embeds = web_presence.get("oembed_hits", 0)
+            wp += min(embeds / 100.0, 1.0) * 25
+            # ClawCities page presence
+            clawcities = web_presence.get("clawcities_pages", 0)
+            wp += min(clawcities / 10.0, 1.0) * 15
+            # BoTTube videos + views — log2 scale
+            bt_videos = web_presence.get("bottube_videos", 0)
+            bt_views = web_presence.get("bottube_views", 0)
+            bt_score = (math.log2(max(bt_videos, 0) + 1) / 6.0 +
+                        math.log2(max(bt_views, 0) + 1) / 14.0) / 2.0
+            wp += min(bt_score, 1.0) * 40
+            # External mentions/links
+            mentions = web_presence.get("external_mentions", 0)
+            wp += min(mentions / 50.0, 1.0) * 20
+            components["web_presence"] = round(min(wp, 150.0), 1)
+        else:
+            components["web_presence"] = 0.0
 
-        # Grade: S/A/B/C/D/F
-        if total >= 800:
+        # 8. Social Reach (0-150) — Moltbook + social metrics
+        if social_reach and isinstance(social_reach, dict):
+            sr = 0.0
+            # Moltbook karma — log2 scale
+            karma = social_reach.get("moltbook_karma", 0)
+            sr += min(math.log2(max(karma, 0) + 1) / 10.0, 1.0) * 40
+            # Moltbook post count
+            posts = social_reach.get("moltbook_posts", 0)
+            sr += min(posts / 200.0, 1.0) * 25
+            # Submolt ownership (weighted by total subscribers)
+            submolt_count = social_reach.get("submolt_count", 0)
+            submolt_subs = social_reach.get("submolt_total_subscribers", 0)
+            sub_score = (min(submolt_count / 20.0, 1.0) * 0.4 +
+                         min(submolt_subs / 500.0, 1.0) * 0.6)
+            sr += sub_score * 35
+            # Engagement rate (upvotes per post)
+            engagement = social_reach.get("engagement_rate", 0.0)
+            sr += min(engagement / 5.0, 1.0) * 25
+            # X/Twitter followers — log2 scale
+            followers = social_reach.get("twitter_followers", 0)
+            sr += min(math.log2(max(followers, 0) + 1) / 14.0, 1.0) * 25
+            components["social_reach"] = round(min(sr, 150.0), 1)
+        else:
+            components["social_reach"] = 0.0
+
+        # Total BeaconEstimate (0-1300)
+        total = sum(components.values())
+        total = round(min(total, 1300.0), 1)
+
+        # Grade: S/A/B/C/D/F (adjusted for 1300 max)
+        if total >= 1040:
             grade = "S"
-        elif total >= 650:
+        elif total >= 845:
             grade = "A"
-        elif total >= 500:
+        elif total >= 650:
             grade = "B"
-        elif total >= 350:
+        elif total >= 455:
             grade = "C"
-        elif total >= 200:
+        elif total >= 260:
             grade = "D"
         else:
             grade = "F"
@@ -820,7 +874,7 @@ class AtlasManager:
             "estimate": total,
             "grade": grade,
             "components": components,
-            "max_possible": 1000,
+            "max_possible": 1300,
             "ts": now,
         }
 
