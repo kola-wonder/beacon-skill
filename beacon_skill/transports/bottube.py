@@ -3,6 +3,8 @@ from typing import Any, Dict, Optional
 
 import requests
 
+from ..retry import with_retry
+
 
 class BoTTubeError(RuntimeError):
     pass
@@ -21,7 +23,7 @@ class BoTTubeClient:
         self.timeout_s = timeout_s
         self.verify_ssl = verify_ssl
         self.session = requests.Session()
-        self.session.headers.update({"User-Agent": "Beacon/0.1.0 (Elyan Labs)"})
+        self.session.headers.update({"User-Agent": "Beacon/1.0.0 (Elyan Labs)"})
 
     def _request(self, method: str, path: str, auth: bool = False, **kwargs) -> Dict[str, Any]:
         url = f"{self.base_url}{path}"
@@ -31,21 +33,25 @@ class BoTTubeClient:
                 raise BoTTubeError("BoTTube API key required")
             headers = dict(headers)
             headers["X-API-Key"] = self.api_key
-        resp = self.session.request(
-            method,
-            url,
-            headers=headers,
-            timeout=self.timeout_s,
-            verify=self.verify_ssl,
-            **kwargs,
-        )
-        try:
-            data = resp.json()
-        except Exception:
-            data = {"raw": resp.text}
-        if resp.status_code >= 400:
-            raise BoTTubeError(data.get("error") or f"HTTP {resp.status_code}")
-        return data
+
+        def _do():
+            resp = self.session.request(
+                method,
+                url,
+                headers=headers,
+                timeout=self.timeout_s,
+                verify=self.verify_ssl,
+                **kwargs,
+            )
+            try:
+                data = resp.json()
+            except Exception:
+                data = {"raw": resp.text}
+            if resp.status_code >= 400:
+                raise BoTTubeError(data.get("error") or f"HTTP {resp.status_code}")
+            return data
+
+        return with_retry(_do)
 
     def get_agent(self, agent_name: str) -> Dict[str, Any]:
         return self._request("GET", f"/api/agents/{agent_name}", auth=False)

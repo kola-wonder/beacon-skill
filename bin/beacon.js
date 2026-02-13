@@ -11,7 +11,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const VERSION = '0.1.1';
+const VERSION = '1.0.0';
 const PKG_ROOT = path.join(__dirname, '..');
 
 const INSTALL_DIR = path.join(os.homedir(), '.beacon', 'npm');

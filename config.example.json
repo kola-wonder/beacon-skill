@@ -2,6 +2,10 @@
   "beacon": {
     "agent_name": "sophia-elya"
   },
+  "identity": {
+    "auto_sign": true,
+    "password_protected": false
+  },
   "bottube": {
     "base_url": "https://bottube.ai",
     "api_key": "bottube_sk_..."
@@ -16,6 +20,11 @@
     "port": 38400,
     "broadcast": true,
     "ttl": null
+  },
+  "webhook": {
+    "enabled": false,
+    "port": 8402,
+    "host": "0.0.0.0"
   },
   "rustchain": {
     "base_url": "https://50.28.86.131",

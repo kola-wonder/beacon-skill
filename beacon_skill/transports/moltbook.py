@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional
 
 import requests
 
+from ..retry import with_retry
 from ..storage import get_last_ts, set_last_ts
 
 
@@ -21,7 +22,7 @@ class MoltbookClient:
         self.api_key = api_key
         self.timeout_s = timeout_s
         self.session = requests.Session()
-        self.session.headers.update({"User-Agent": "Beacon/0.1.0 (Elyan Labs)"})
+        self.session.headers.update({"User-Agent": "Beacon/1.0.0 (Elyan Labs)"})
 
     def _request(self, method: str, path: str, auth: bool = False, **kwargs) -> Dict[str, Any]:
         url = f"{self.base_url}{path}"
@@ -31,14 +32,18 @@ class MoltbookClient:
                 raise MoltbookError("Moltbook API key required")
             headers = dict(headers)
             headers["Authorization"] = f"Bearer {self.api_key}"
-        resp = self.session.request(method, url, headers=headers, timeout=self.timeout_s, **kwargs)
-        try:
-            data = resp.json()
-        except Exception:
-            data = {"raw": resp.text}
-        if resp.status_code >= 400:
-            raise MoltbookError(data.get("error") or f"HTTP {resp.status_code}")
-        return data
+
+        def _do():
+            resp = self.session.request(method, url, headers=headers, timeout=self.timeout_s, **kwargs)
+            try:
+                data = resp.json()
+            except Exception:
+                data = {"raw": resp.text}
+            if resp.status_code >= 400:
+                raise MoltbookError(data.get("error") or f"HTTP {resp.status_code}")
+            return data
+
+        return with_retry(_do)
 
     def upvote(self, post_id: int) -> Dict[str, Any]:
         return self._request("POST", f"/api/v1/posts/{int(post_id)}/upvote", auth=True)

@@ -1,7 +1,7 @@
 {
   "name": "beacon-skill",
-  "version": "0.1.1",
-  "description": "Beacon - the action layer for AI agents. Like, tip, post bounties, transfer RTC tokens, and coordinate via UDP mesh (BoTTube/Moltbook/RustChain + UDP bus)",
+  "version": "2.5.0",
+  "description": "Beacon - the AI agent orchestrator. Heartbeat, mayday, accords, virtual cities, AI-to-AI calibration (BoTTube/Moltbook/RustChain + UDP + Webhook)",
   "bin": {
     "beacon": "bin/beacon.js"
   },
@@ -28,11 +28,15 @@
     "rtc",
     "udp",
     "bounties",
-    "ads",
     "agent-economy",
     "ed25519",
     "mesh-networking",
-    "agent-to-agent"
+    "agent-to-agent",
+    "heartbeat",
+    "mayday",
+    "accord",
+    "atlas",
+    "calibration"
   ],
   "author": "Elyan Labs <scott@elyanlabs.ai>",
   "license": "MIT",
@@ -46,17 +50,18 @@
   },
   "claudeSkill": {
     "name": "beacon",
-    "description": "The action layer for AI agents - like, tip, post bounties, transfer RTC, coordinate via UDP mesh",
+    "description": "AI agent orchestrator — heartbeat, mayday, accords, atlas cities, calibration, crypto payments, P2P mesh",
     "invocation": "/beacon",
     "platforms": [
       "bottube",
       "moltbook",
       "rustchain",
       "udp",
+      "webhook",
       "clawhub"
     ],
     "author": "Elyan Labs",
     "homepage": "https://bottube.ai/skills/beacon",
-    "version": "0.1.1"
+    "version": "2.5.0"
   }
 }
