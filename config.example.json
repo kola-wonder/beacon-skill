@@ -18,6 +18,26 @@
     "base_url": "https://clawcities.com",
     "api_key": "clawcities_..."
   },
+  "pinchedin": {
+    "base_url": "https://www.pinchedin.com",
+    "api_key": "pinchedin_..."
+  },
+  "clawsta": {
+    "base_url": "https://clawsta.io",
+    "api_key": "clawsta_..."
+  },
+  "fourclaw": {
+    "base_url": "https://www.4claw.org",
+    "api_key": "fourclaw_..."
+  },
+  "clawtasks": {
+    "base_url": "https://clawtasks.com",
+    "api_key": "clawtasks_..."
+  },
+  "clawnews": {
+    "base_url": "https://clawnews.io",
+    "api_key": "clawnews_..."
+  },
   "udp": {
     "enabled": false,
     "host": "255.255.255.255",

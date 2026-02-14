@@ -9,7 +9,20 @@ from . import __version__
 from .codec import decode_envelopes, encode_envelope, verify_envelope
 from .config import load_config, write_default_config
 from .storage import append_jsonl
-from .transports import BoTTubeClient, ClawCitiesClient, MoltbookClient, RustChainClient, RustChainKeypair, udp_listen, udp_send
+from .transports import (
+    BoTTubeClient,
+    ClawCitiesClient,
+    ClawNewsClient,
+    ClawstaClient,
+    ClawTasksClient,
+    FourClawClient,
+    MoltbookClient,
+    PinchedInClient,
+    RustChainClient,
+    RustChainKeypair,
+    udp_listen,
+    udp_send,
+)
 
 
 def _cfg_get(cfg: Dict[str, Any], *path: str, default: Any = None) -> Any:
@@ -114,7 +127,7 @@ _ROLE_PRESETS = {
 _ALL_KINDS = ["like", "want", "bounty", "ad", "hello", "link", "event", "pay",
               "pulse", "offer", "accept", "deliver", "confirm", "subscribe",
               "mayday", "heartbeat", "accord"]
-_ALL_TRANSPORTS = ["udp", "webhook", "bottube", "moltbook", "clawcities", "rustchain"]
+_ALL_TRANSPORTS = ["udp", "webhook", "bottube", "moltbook", "clawcities", "clawsta", "fourclaw", "pinchedin", "clawtasks", "clawnews", "rustchain"]
 _TOPIC_SUGGESTIONS = [
     "ai", "blockchain", "gaming", "vintage-hardware", "music",
     "art", "science", "finance", "devtools", "security",
@@ -822,6 +835,215 @@ def cmd_clawcities_site(args: argparse.Namespace) -> int:
         base_url=_cfg_get(cfg, "clawcities", "base_url", default="https://clawcities.com"),
     )
     result = client.get_site(args.site_name)
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+# ── PinchedIn ──
+
+def cmd_pinchedin_post(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    identity = _load_identity(args)
+    client = PinchedInClient(
+        base_url=_cfg_get(cfg, "pinchedin", "base_url", default="https://www.pinchedin.com"),
+        api_key=_cfg_get(cfg, "pinchedin", "api_key", default=None) or None,
+    )
+    body = args.text
+    if args.envelope_kind:
+        env = _build_envelope(cfg, args.envelope_kind, "pinchedin:feed", args.link or [], {}, identity=identity)
+        body = f"{body}\n\n{env}"
+    if args.dry_run:
+        print(json.dumps({"content": body}, indent=2))
+        return 0
+    result = client.create_post(body)
+    append_jsonl("outbox.jsonl", {"platform": "pinchedin", "action": "post", "result": result, "ts": int(time.time())})
+    _maybe_udp_emit(cfg, {"platform": "pinchedin", "action": "post"})
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def cmd_pinchedin_feed(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    client = PinchedInClient(
+        base_url=_cfg_get(cfg, "pinchedin", "base_url", default="https://www.pinchedin.com"),
+        api_key=_cfg_get(cfg, "pinchedin", "api_key", default=None) or None,
+    )
+    result = client.get_feed(limit=args.limit)
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def cmd_pinchedin_jobs(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    client = PinchedInClient(
+        base_url=_cfg_get(cfg, "pinchedin", "base_url", default="https://www.pinchedin.com"),
+        api_key=_cfg_get(cfg, "pinchedin", "api_key", default=None) or None,
+    )
+    result = client.get_jobs(limit=args.limit)
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def cmd_pinchedin_connect(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    client = PinchedInClient(
+        base_url=_cfg_get(cfg, "pinchedin", "base_url", default="https://www.pinchedin.com"),
+        api_key=_cfg_get(cfg, "pinchedin", "api_key", default=None) or None,
+    )
+    result = client.connect(args.target_bot_id)
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+# ── Clawsta ──
+
+def cmd_clawsta_post(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    identity = _load_identity(args)
+    client = ClawstaClient(
+        base_url=_cfg_get(cfg, "clawsta", "base_url", default="https://clawsta.io"),
+        api_key=_cfg_get(cfg, "clawsta", "api_key", default=None) or None,
+    )
+    body = args.text
+    if args.envelope_kind:
+        env = _build_envelope(cfg, args.envelope_kind, "clawsta:feed", args.link or [], {}, identity=identity)
+        body = f"{body}\n\n{env}"
+    if args.dry_run:
+        print(json.dumps({"content": body, "image_url": args.image_url}, indent=2))
+        return 0
+    result = client.create_post(body, image_url=args.image_url)
+    append_jsonl("outbox.jsonl", {"platform": "clawsta", "action": "post", "result": result, "ts": int(time.time())})
+    _maybe_udp_emit(cfg, {"platform": "clawsta", "action": "post"})
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def cmd_clawsta_feed(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    client = ClawstaClient(
+        base_url=_cfg_get(cfg, "clawsta", "base_url", default="https://clawsta.io"),
+        api_key=_cfg_get(cfg, "clawsta", "api_key", default=None) or None,
+    )
+    result = client.get_feed(limit=args.limit)
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+# ── 4Claw ──
+
+def cmd_fourclaw_boards(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    client = FourClawClient(
+        base_url=_cfg_get(cfg, "fourclaw", "base_url", default="https://www.4claw.org"),
+        api_key=_cfg_get(cfg, "fourclaw", "api_key", default=None) or None,
+    )
+    result = client.get_boards()
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def cmd_fourclaw_threads(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    client = FourClawClient(
+        base_url=_cfg_get(cfg, "fourclaw", "base_url", default="https://www.4claw.org"),
+        api_key=_cfg_get(cfg, "fourclaw", "api_key", default=None) or None,
+    )
+    result = client.get_threads(board=args.board, limit=args.limit)
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def cmd_fourclaw_post(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    identity = _load_identity(args)
+    client = FourClawClient(
+        base_url=_cfg_get(cfg, "fourclaw", "base_url", default="https://www.4claw.org"),
+        api_key=_cfg_get(cfg, "fourclaw", "api_key", default=None) or None,
+    )
+    content = args.text
+    if args.envelope_kind:
+        env = _build_envelope(cfg, args.envelope_kind, f"fourclaw:{args.board}", args.link or [], {}, identity=identity)
+        content = f"{content}\n\n{env}"
+    if args.dry_run:
+        print(json.dumps({"board": args.board, "title": args.title, "content": content}, indent=2))
+        return 0
+    result = client.create_thread(args.board, args.title, content)
+    append_jsonl("outbox.jsonl", {"platform": "fourclaw", "action": "thread", "board": args.board, "result": result, "ts": int(time.time())})
+    _maybe_udp_emit(cfg, {"platform": "fourclaw", "action": "thread", "board": args.board})
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def cmd_fourclaw_reply(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    client = FourClawClient(
+        base_url=_cfg_get(cfg, "fourclaw", "base_url", default="https://www.4claw.org"),
+        api_key=_cfg_get(cfg, "fourclaw", "api_key", default=None) or None,
+    )
+    if args.dry_run:
+        print(json.dumps({"thread_id": args.thread_id, "content": args.text}, indent=2))
+        return 0
+    result = client.reply(args.thread_id, args.text)
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+# ── ClawTasks ──
+
+def cmd_clawtasks_browse(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    client = ClawTasksClient(
+        base_url=_cfg_get(cfg, "clawtasks", "base_url", default="https://clawtasks.com"),
+        api_key=_cfg_get(cfg, "clawtasks", "api_key", default=None) or None,
+    )
+    result = client.get_bounties(status=args.status, limit=args.limit)
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def cmd_clawtasks_post(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    client = ClawTasksClient(
+        base_url=_cfg_get(cfg, "clawtasks", "base_url", default="https://clawtasks.com"),
+        api_key=_cfg_get(cfg, "clawtasks", "api_key", default=None) or None,
+    )
+    tags = args.tags.split(",") if args.tags else None
+    if args.dry_run:
+        print(json.dumps({"title": args.title, "description": args.description, "tags": tags}, indent=2))
+        return 0
+    result = client.create_bounty(args.title, args.description, tags=tags, deadline_hours=args.deadline)
+    append_jsonl("outbox.jsonl", {"platform": "clawtasks", "action": "bounty", "result": result, "ts": int(time.time())})
+    _maybe_udp_emit(cfg, {"platform": "clawtasks", "action": "bounty"})
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+# ── ClawNews ──
+
+def cmd_clawnews_browse(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    client = ClawNewsClient(
+        base_url=_cfg_get(cfg, "clawnews", "base_url", default="https://clawnews.io"),
+        api_key=_cfg_get(cfg, "clawnews", "api_key", default=None) or None,
+    )
+    result = client.get_stories(limit=args.limit)
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def cmd_clawnews_submit(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    client = ClawNewsClient(
+        base_url=_cfg_get(cfg, "clawnews", "base_url", default="https://clawnews.io"),
+        api_key=_cfg_get(cfg, "clawnews", "api_key", default=None) or None,
+    )
+    tags = args.tags.split(",") if args.tags else None
+    if args.dry_run:
+        print(json.dumps({"headline": args.headline, "url": args.url, "summary": args.summary, "tags": tags}, indent=2))
+        return 0
+    result = client.submit_story(args.headline, args.url, args.summary, tags=tags)
+    append_jsonl("outbox.jsonl", {"platform": "clawnews", "action": "story", "result": result, "ts": int(time.time())})
+    _maybe_udp_emit(cfg, {"platform": "clawnews", "action": "story"})
     print(json.dumps(result, indent=2))
     return 0
 
@@ -4004,6 +4226,108 @@ def main(argv: Optional[List[str]] = None) -> None:
     sp = ccsub.add_parser("site", help="View a ClawCities site")
     sp.add_argument("site_name", help="Site name/slug")
     sp.set_defaults(func=cmd_clawcities_site)
+
+    # PinchedIn
+    pi = sub.add_parser("pinchedin", help="PinchedIn — professional network for AI agents")
+    pisub = pi.add_subparsers(dest="picmd", required=True)
+
+    sp = pisub.add_parser("post", help="Create a post on PinchedIn")
+    sp.add_argument("--text", required=True, help="Post content")
+    sp.add_argument("--envelope-kind", default=None, help="Embed a [BEACON v2] envelope")
+    sp.add_argument("--link", action="append", default=[], help="Attach a link (repeatable)")
+    sp.add_argument("--dry-run", action="store_true")
+    sp.add_argument("--password", default=None, help="Password for encrypted identity")
+    sp.set_defaults(func=cmd_pinchedin_post)
+
+    sp = pisub.add_parser("feed", help="Browse the PinchedIn feed")
+    sp.add_argument("--limit", type=int, default=20)
+    sp.set_defaults(func=cmd_pinchedin_feed)
+
+    sp = pisub.add_parser("jobs", help="Browse PinchedIn job listings")
+    sp.add_argument("--limit", type=int, default=20)
+    sp.set_defaults(func=cmd_pinchedin_jobs)
+
+    sp = pisub.add_parser("connect", help="Send a connection request")
+    sp.add_argument("target_bot_id", help="Bot ID to connect with")
+    sp.set_defaults(func=cmd_pinchedin_connect)
+
+    # Clawsta
+    cs = sub.add_parser("clawsta", help="Clawsta — Instagram-like for AI agents")
+    cssub = cs.add_subparsers(dest="cscmd", required=True)
+
+    sp = cssub.add_parser("post", help="Create a Clawsta post")
+    sp.add_argument("--text", required=True, help="Post content")
+    sp.add_argument("--image-url", dest="image_url", default=None, help="Image URL (defaults to Elyan banner)")
+    sp.add_argument("--envelope-kind", default=None, help="Embed a [BEACON v2] envelope")
+    sp.add_argument("--link", action="append", default=[], help="Attach a link (repeatable)")
+    sp.add_argument("--dry-run", action="store_true")
+    sp.add_argument("--password", default=None, help="Password for encrypted identity")
+    sp.set_defaults(func=cmd_clawsta_post)
+
+    sp = cssub.add_parser("feed", help="Browse the Clawsta feed")
+    sp.add_argument("--limit", type=int, default=20)
+    sp.set_defaults(func=cmd_clawsta_feed)
+
+    # 4Claw
+    fc = sub.add_parser("fourclaw", help="4Claw — anonymous imageboard for AI agents")
+    fcsub = fc.add_subparsers(dest="fccmd", required=True)
+
+    sp = fcsub.add_parser("boards", help="List all 4Claw boards")
+    sp.set_defaults(func=cmd_fourclaw_boards)
+
+    sp = fcsub.add_parser("threads", help="Browse threads on a board")
+    sp.add_argument("--board", default="b", help="Board slug (default: b)")
+    sp.add_argument("--limit", type=int, default=20)
+    sp.set_defaults(func=cmd_fourclaw_threads)
+
+    sp = fcsub.add_parser("post", help="Create a new thread")
+    sp.add_argument("--board", default="b", help="Board slug")
+    sp.add_argument("--title", required=True, help="Thread title")
+    sp.add_argument("--text", required=True, help="Thread content")
+    sp.add_argument("--envelope-kind", default=None, help="Embed a [BEACON v2] envelope")
+    sp.add_argument("--link", action="append", default=[], help="Attach a link (repeatable)")
+    sp.add_argument("--dry-run", action="store_true")
+    sp.add_argument("--password", default=None, help="Password for encrypted identity")
+    sp.set_defaults(func=cmd_fourclaw_post)
+
+    sp = fcsub.add_parser("reply", help="Reply to a thread")
+    sp.add_argument("thread_id", help="Thread UUID")
+    sp.add_argument("--text", required=True, help="Reply content")
+    sp.add_argument("--dry-run", action="store_true")
+    sp.set_defaults(func=cmd_fourclaw_reply)
+
+    # ClawTasks
+    ct = sub.add_parser("clawtasks", help="ClawTasks — bounty marketplace for AI agents")
+    ctsub = ct.add_subparsers(dest="ctcmd", required=True)
+
+    sp = ctsub.add_parser("browse", help="Browse open bounties")
+    sp.add_argument("--status", default="open", help="Bounty status (open, closed, all)")
+    sp.add_argument("--limit", type=int, default=20)
+    sp.set_defaults(func=cmd_clawtasks_browse)
+
+    sp = ctsub.add_parser("post", help="Create a new bounty")
+    sp.add_argument("--title", required=True, help="Bounty title")
+    sp.add_argument("--description", required=True, help="Bounty description")
+    sp.add_argument("--tags", default=None, help="Comma-separated tags")
+    sp.add_argument("--deadline", type=int, default=168, help="Deadline in hours (default: 168)")
+    sp.add_argument("--dry-run", action="store_true")
+    sp.set_defaults(func=cmd_clawtasks_post)
+
+    # ClawNews
+    cn = sub.add_parser("clawnews", help="ClawNews — AI agent news aggregator")
+    cnsub = cn.add_subparsers(dest="cncmd", required=True)
+
+    sp = cnsub.add_parser("browse", help="Browse recent stories")
+    sp.add_argument("--limit", type=int, default=20)
+    sp.set_defaults(func=cmd_clawnews_browse)
+
+    sp = cnsub.add_parser("submit", help="Submit a story")
+    sp.add_argument("--headline", required=True, help="Story headline")
+    sp.add_argument("--url", required=True, help="Story URL")
+    sp.add_argument("--summary", required=True, help="Brief summary")
+    sp.add_argument("--tags", default=None, help="Comma-separated tags")
+    sp.add_argument("--dry-run", action="store_true")
+    sp.set_defaults(func=cmd_clawnews_submit)
 
     # RustChain
     r = sub.add_parser("rustchain", help="RustChain payments (signed transfers)")
