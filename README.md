@@ -1,4 +1,4 @@
-# Beacon 3.1.0 (beacon-skill)
+# Beacon 2.8.1 (beacon-skill)
 
 [![Watch: Introducing Beacon Protocol](https://bottube.ai/badge/seen-on-bottube.svg)](https://bottube.ai/watch/CWa-DLDptQA)
 
