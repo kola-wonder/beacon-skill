@@ -3766,6 +3766,67 @@ def cmd_thought_history(args: argparse.Namespace) -> int:
     return 0
 
 
+# ── DNS name resolution commands ──
+
+
+def cmd_dns_resolve(args: argparse.Namespace) -> int:
+    """Resolve a human-readable name to a beacon agent_id."""
+    from .dns import BeaconDNS
+    cfg = load_config()
+    dns = BeaconDNS(base_url=_cfg_get(cfg, "dns", "base_url", default="http://50.28.86.131:8070/beacon"))
+    name = args.name
+    if getattr(args, "dry_run", False):
+        print(json.dumps({"action": "dns_resolve", "name": name}))
+        return 0
+    result = dns.resolve(name)
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
+def cmd_dns_reverse(args: argparse.Namespace) -> int:
+    """Reverse lookup: agent_id to human-readable names."""
+    from .dns import BeaconDNS
+    cfg = load_config()
+    dns = BeaconDNS(base_url=_cfg_get(cfg, "dns", "base_url", default="http://50.28.86.131:8070/beacon"))
+    agent_id = args.agent_id
+    if getattr(args, "dry_run", False):
+        print(json.dumps({"action": "dns_reverse", "agent_id": agent_id}))
+        return 0
+    result = dns.reverse(agent_id)
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
+def cmd_dns_register(args: argparse.Namespace) -> int:
+    """Register a new DNS name for an agent."""
+    from .dns import BeaconDNS
+    cfg = load_config()
+    dns = BeaconDNS(base_url=_cfg_get(cfg, "dns", "base_url", default="http://50.28.86.131:8070/beacon"))
+    name = args.name
+    agent_id = args.agent_id
+    owner = getattr(args, "owner", "") or ""
+    if getattr(args, "dry_run", False):
+        print(json.dumps({"action": "dns_register", "name": name, "agent_id": agent_id, "owner": owner}))
+        return 0
+    result = dns.register(name, agent_id, owner=owner)
+    _maybe_udp_emit(cfg, {"platform": "dns", "action": "register", "name": name, "agent_id": agent_id})
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
+def cmd_dns_list(args: argparse.Namespace) -> int:
+    """List all registered DNS names."""
+    from .dns import BeaconDNS
+    cfg = load_config()
+    dns = BeaconDNS(base_url=_cfg_get(cfg, "dns", "base_url", default="http://50.28.86.131:8070/beacon"))
+    if getattr(args, "dry_run", False):
+        print(json.dumps({"action": "dns_list"}))
+        return 0
+    result = dns.list_all()
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
 # ── BEP-2: Relay commands ──
 
 
@@ -5113,6 +5174,32 @@ def main(argv: Optional[List[str]] = None) -> None:
     sp.set_defaults(func=cmd_thought_history)
 
     # ── BEP-2: Relay ──
+    # ── DNS name resolution ──
+    dns_p = sub.add_parser("dns", help="DNS name resolution — map human names to beacon agent IDs")
+    dns_sub = dns_p.add_subparsers(dest="dns_cmd", required=True)
+
+    sp = dns_sub.add_parser("resolve", help="Resolve a name to an agent_id (e.g. sophia-elya → bcn_c850ea702e8f)")
+    sp.add_argument("name", help="Human-readable agent name to resolve")
+    sp.add_argument("--dry-run", action="store_true", help="Preview without network call")
+    sp.set_defaults(func=cmd_dns_resolve)
+
+    sp = dns_sub.add_parser("reverse", help="Reverse lookup: agent_id to human-readable names")
+    sp.add_argument("agent_id", help="Beacon agent ID (bcn_...)")
+    sp.add_argument("--dry-run", action="store_true", help="Preview without network call")
+    sp.set_defaults(func=cmd_dns_reverse)
+
+    sp = dns_sub.add_parser("register", help="Register a new DNS name for an agent")
+    sp.add_argument("--name", required=True, help="Name to register (3-64 chars, alphanumeric + hyphens)")
+    sp.add_argument("--agent-id", required=True, help="Beacon agent ID to map to")
+    sp.add_argument("--owner", default="", help="Owner identifier")
+    sp.add_argument("--dry-run", action="store_true", help="Preview without network call")
+    sp.set_defaults(func=cmd_dns_register)
+
+    sp = dns_sub.add_parser("list", help="List all registered DNS names")
+    sp.add_argument("--dry-run", action="store_true", help="Preview without network call")
+    sp.set_defaults(func=cmd_dns_list)
+
+    # ── Relay ──
     relay_p = sub.add_parser("relay", help="External agent relay — HTTP on-ramp for Grok, Claude, Gemini (BEP-2)")
     relay_sub = relay_p.add_subparsers(dest="relay_cmd", required=True)
 
