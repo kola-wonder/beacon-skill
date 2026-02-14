@@ -9,7 +9,7 @@ from . import __version__
 from .codec import decode_envelopes, encode_envelope, verify_envelope
 from .config import load_config, write_default_config
 from .storage import append_jsonl
-from .transports import BoTTubeClient, MoltbookClient, RustChainClient, RustChainKeypair, udp_listen, udp_send
+from .transports import BoTTubeClient, ClawCitiesClient, MoltbookClient, RustChainClient, RustChainKeypair, udp_listen, udp_send
 
 
 def _cfg_get(cfg: Dict[str, Any], *path: str, default: Any = None) -> Any:
@@ -114,7 +114,7 @@ _ROLE_PRESETS = {
 _ALL_KINDS = ["like", "want", "bounty", "ad", "hello", "link", "event", "pay",
               "pulse", "offer", "accept", "deliver", "confirm", "subscribe",
               "mayday", "heartbeat", "accord"]
-_ALL_TRANSPORTS = ["udp", "webhook", "bottube", "moltbook", "rustchain"]
+_ALL_TRANSPORTS = ["udp", "webhook", "bottube", "moltbook", "clawcities", "rustchain"]
 _TOPIC_SUGGESTIONS = [
     "ai", "blockchain", "gaming", "vintage-hardware", "music",
     "art", "science", "finance", "devtools", "security",
@@ -773,6 +773,55 @@ def cmd_moltbook_post(args: argparse.Namespace) -> int:
         "submolt": args.submolt,
         "title": args.title,
     })
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+# ── ClawCities ──
+
+def cmd_clawcities_comment(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    identity = _load_identity(args)
+    client = ClawCitiesClient(
+        base_url=_cfg_get(cfg, "clawcities", "base_url", default="https://clawcities.com"),
+        api_key=_cfg_get(cfg, "clawcities", "api_key", default=None) or None,
+    )
+
+    body = args.text
+    if args.envelope_kind:
+        env = _build_envelope(cfg, args.envelope_kind, f"clawcities:{args.site_name}", args.link or [], {}, identity=identity)
+        body = f"{body}\n\n{env}"
+
+    if args.dry_run:
+        print(json.dumps({"site": args.site_name, "body": body}, indent=2))
+        return 0
+    result = client.post_comment(args.site_name, body)
+    append_jsonl("outbox.jsonl", {"platform": "clawcities", "comment": {"site": args.site_name}, "result": result, "ts": int(time.time())})
+    _maybe_udp_emit(cfg, {
+        "platform": "clawcities",
+        "action": "comment",
+        "site": args.site_name,
+    })
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def cmd_clawcities_discover(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    client = ClawCitiesClient(
+        base_url=_cfg_get(cfg, "clawcities", "base_url", default="https://clawcities.com"),
+    )
+    agents = client.discover_beacon_agents(limit=args.limit)
+    print(json.dumps({"agents": agents, "count": len(agents)}, indent=2))
+    return 0
+
+
+def cmd_clawcities_site(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    client = ClawCitiesClient(
+        base_url=_cfg_get(cfg, "clawcities", "base_url", default="https://clawcities.com"),
+    )
+    result = client.get_site(args.site_name)
     print(json.dumps(result, indent=2))
     return 0
 
@@ -3934,6 +3983,27 @@ def main(argv: Optional[List[str]] = None) -> None:
     sp.add_argument("--dry-run", action="store_true")
     sp.add_argument("--password", default=None, help="Password for encrypted identity")
     sp.set_defaults(func=cmd_moltbook_post)
+
+    # ClawCities
+    cc = sub.add_parser("clawcities", help="ClawCities pings (guestbook comments, discovery)")
+    ccsub = cc.add_subparsers(dest="cccmd", required=True)
+
+    sp = ccsub.add_parser("comment", help="Post a guestbook comment on a ClawCities site")
+    sp.add_argument("site_name", help="Site name/slug (e.g. sophia-elya-elyanlabs)")
+    sp.add_argument("--text", required=True, help="Comment text")
+    sp.add_argument("--envelope-kind", default=None, help="Embed a [BEACON v2] envelope")
+    sp.add_argument("--link", action="append", default=[], help="Attach a link (repeatable)")
+    sp.add_argument("--dry-run", action="store_true")
+    sp.add_argument("--password", default=None, help="Password for encrypted identity")
+    sp.set_defaults(func=cmd_clawcities_comment)
+
+    sp = ccsub.add_parser("discover", help="Scan sites for beacon-enabled agents")
+    sp.add_argument("--limit", type=int, default=50, help="Max sites to scan")
+    sp.set_defaults(func=cmd_clawcities_discover)
+
+    sp = ccsub.add_parser("site", help="View a ClawCities site")
+    sp.add_argument("site_name", help="Site name/slug")
+    sp.set_defaults(func=cmd_clawcities_site)
 
     # RustChain
     r = sub.add_parser("rustchain", help="RustChain payments (signed transfers)")

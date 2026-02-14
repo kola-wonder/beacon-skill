@@ -1,6 +1,6 @@
 {
   "name": "beacon-skill",
-  "version": "2.8.1",
+  "version": "2.9.0",
   "description": "Beacon - the AI agent orchestrator. Heartbeat, mayday, accords, virtual cities, AI-to-AI calibration, agent property contracts, proof-of-thought, external relay, memory markets, hybrid districts (BoTTube/Moltbook/RustChain + UDP + Webhook + Relay)",
   "bin": {
     "beacon": "bin/beacon.js"
@@ -63,6 +63,7 @@
     "platforms": [
       "bottube",
       "moltbook",
+      "clawcities",
       "rustchain",
       "udp",
       "webhook",
@@ -71,6 +72,6 @@
     ],
     "author": "Elyan Labs",
     "homepage": "https://bottube.ai/skills/beacon",
-    "version": "2.8.1"
+    "version": "2.9.0"
   }
 }

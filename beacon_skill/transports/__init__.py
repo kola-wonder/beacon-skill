@@ -1,5 +1,6 @@
 __all__ = [
     "BoTTubeClient",
+    "ClawCitiesClient",
     "MoltbookClient",
     "RelayClient",
     "RustChainClient",
@@ -11,6 +12,7 @@ __all__ = [
 ]
 
 from .bottube import BoTTubeClient
+from .clawcities import ClawCitiesClient
 from .moltbook import MoltbookClient
 from .relay import RelayClient
 from .rustchain import RustChainClient, RustChainKeypair
