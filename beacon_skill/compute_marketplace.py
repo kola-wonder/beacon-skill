@@ -5,10 +5,10 @@ x402-payable endpoints. Conway Automaton agents discover this via
 the /.well-known/agent-card.json and pay USDC per request.
 
 Real endpoints that route to your actual infrastructure:
-  - /api/compute/inference → POWER8 Ollama (100.75.100.89:11434)
-  - /api/compute/vision   → BAGEL-7B on .160 (192.168.0.160:8095)
-  - /api/compute/tts      → XTTS on localhost:5500
-  - /api/compute/video    → ComfyUI on .126 (192.168.0.126:8188)
+  - /api/compute/inference → LLM inference (configure OLLAMA_URL env var)
+  - /api/compute/vision   → Vision model (configure BAGEL_URL env var)
+  - /api/compute/tts      → Text-to-speech (configure XTTS_URL env var)
+  - /api/compute/video    → Video generation (configure COMFYUI_URL env var)
 
 Beacon 2.9.0 — Elyan Labs.
 """
@@ -28,10 +28,10 @@ compute_bp = Blueprint("compute_marketplace", __name__)
 
 # ── Lab infrastructure endpoints ──
 
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://100.75.100.89:11434")
-BAGEL_URL = os.environ.get("BAGEL_URL", "http://100.75.100.89:8095")
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+BAGEL_URL = os.environ.get("BAGEL_URL", "http://localhost:8095")
 XTTS_URL = os.environ.get("XTTS_URL", "http://localhost:5500")
-COMFYUI_URL = os.environ.get("COMFYUI_URL", "http://192.168.0.126:8188")
+COMFYUI_URL = os.environ.get("COMFYUI_URL", "http://localhost:8188")
 BOTTUBE_API = os.environ.get("BOTTUBE_API", "https://bottube.ai/api")
 
 # Track jobs for billing
@@ -292,7 +292,7 @@ def catalog():
             },
             {
                 "type": "rustchain_rtc",
-                "node": "https://50.28.86.131",
+                "node": "https://rustchain.org",
                 "rate": "1 RTC = $0.10 USD",
             },
         ],
@@ -310,6 +310,6 @@ def catalog():
             "ram_gb": 512,
             "accelerators": ["Hailo-8 TPU", "Alveo U30 FPGA x2"],
         },
-        "uptime_url": "https://50.28.86.131/health",
-        "beacon_atlas": "https://50.28.86.131:8070/beacon/",
+        "uptime_url": "https://rustchain.org/health",
+        "beacon_atlas": "https://rustchain.org/beacon/",
     })

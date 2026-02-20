@@ -15,7 +15,7 @@ import requests
 from requests.exceptions import JSONDecodeError
 
 # Default Beacon DNS server (proxied through nginx at /beacon/)
-DEFAULT_DNS_URL = "http://50.28.86.131:8070/beacon"
+DEFAULT_DNS_URL = "https://rustchain.org/beacon"
 
 
 class BeaconDNS:

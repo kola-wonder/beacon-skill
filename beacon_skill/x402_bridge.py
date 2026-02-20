@@ -189,7 +189,7 @@ def _verify_rtc_payment(rtc_header: str, service_key: str) -> Dict[str, Any]:
 
         # Verify TX exists on RustChain
         resp = _req.get(
-            f"https://50.28.86.131/wallet/balance",
+            f"https://rustchain.org/wallet/balance",
             params={"miner_id": data.get("from_wallet", "")},
             headers={"X-Admin-Key": os.environ.get("RC_ADMIN_KEY", "")},
             verify=False,
@@ -269,7 +269,7 @@ def conway_agent_card():
         ],
         "beacon": {
             "protocol_version": "2.9.0",
-            "atlas": "https://50.28.86.131:8070/beacon/",
+            "atlas": "https://rustchain.org/beacon/",
             "transports": ["webhook", "udp", "bottube", "moltbook", "conway"],
         },
         "hardware": {

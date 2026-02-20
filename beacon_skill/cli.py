@@ -320,7 +320,7 @@ def cmd_init(args: argparse.Namespace) -> int:
             "timeout_s": 20,
         },
         "dashboard": {
-            "api_base_url": "http://50.28.86.131:8071",
+            "api_base_url": "https://rustchain.org/beacon/api",
             "api_poll_interval_s": 15.0,
         },
         "udp": {
@@ -336,7 +336,7 @@ def cmd_init(args: argparse.Namespace) -> int:
             "host": "0.0.0.0",
         },
         "rustchain": {
-            "base_url": "https://50.28.86.131",
+            "base_url": "https://rustchain.org",
             "verify_ssl": False,
             "private_key_hex": "",
             "enabled": "rustchain" in enabled_transports,
@@ -1268,7 +1268,7 @@ def cmd_rustchain_wallet_new(args: argparse.Namespace) -> int:
 def cmd_rustchain_balance(args: argparse.Namespace) -> int:
     cfg = load_config()
     client = RustChainClient(
-        base_url=_cfg_get(cfg, "rustchain", "base_url", default="https://50.28.86.131"),
+        base_url=_cfg_get(cfg, "rustchain", "base_url", default="https://rustchain.org"),
         verify_ssl=bool(_cfg_get(cfg, "rustchain", "verify_ssl", default=False)),
     )
     result = client.balance(args.address)
@@ -1286,7 +1286,7 @@ def cmd_rustchain_pay(args: argparse.Namespace) -> int:
         return 2
 
     client = RustChainClient(
-        base_url=_cfg_get(cfg, "rustchain", "base_url", default="https://50.28.86.131"),
+        base_url=_cfg_get(cfg, "rustchain", "base_url", default="https://rustchain.org"),
         verify_ssl=bool(_cfg_get(cfg, "rustchain", "verify_ssl", default=False)),
     )
     payload = client.sign_transfer(
@@ -2501,7 +2501,7 @@ def cmd_loop(args: argparse.Namespace) -> int:
             from .anchor import AnchorManager
             rc_cfg = cfg.get("rustchain", {})
             rc_client = RustChainClient(
-                base_url=rc_cfg.get("base_url", "https://50.28.86.131"),
+                base_url=rc_cfg.get("base_url", "https://rustchain.org"),
                 verify_ssl=rc_cfg.get("verify_ssl", False),
             )
             kp = None
@@ -3457,7 +3457,7 @@ def _build_anchor_mgr(args: argparse.Namespace):
         return None, cfg
     rc_cfg = cfg.get("rustchain", {})
     rc_client = RustChainClient(
-        base_url=rc_cfg.get("base_url", "https://50.28.86.131"),
+        base_url=rc_cfg.get("base_url", "https://rustchain.org"),
         verify_ssl=rc_cfg.get("verify_ssl", False),
     )
     kp = None
@@ -4013,7 +4013,7 @@ def cmd_dns_resolve(args: argparse.Namespace) -> int:
     """Resolve a human-readable name to a beacon agent_id."""
     from .dns import BeaconDNS
     cfg = load_config()
-    dns = BeaconDNS(base_url=_cfg_get(cfg, "dns", "base_url", default="http://50.28.86.131:8070/beacon"))
+    dns = BeaconDNS(base_url=_cfg_get(cfg, "dns", "base_url", default="https://rustchain.org/beacon"))
     name = args.name
     if getattr(args, "dry_run", False):
         print(json.dumps({"action": "dns_resolve", "name": name}))
@@ -4027,7 +4027,7 @@ def cmd_dns_reverse(args: argparse.Namespace) -> int:
     """Reverse lookup: agent_id to human-readable names."""
     from .dns import BeaconDNS
     cfg = load_config()
-    dns = BeaconDNS(base_url=_cfg_get(cfg, "dns", "base_url", default="http://50.28.86.131:8070/beacon"))
+    dns = BeaconDNS(base_url=_cfg_get(cfg, "dns", "base_url", default="https://rustchain.org/beacon"))
     agent_id = args.agent_id
     if getattr(args, "dry_run", False):
         print(json.dumps({"action": "dns_reverse", "agent_id": agent_id}))
@@ -4041,7 +4041,7 @@ def cmd_dns_register(args: argparse.Namespace) -> int:
     """Register a new DNS name for an agent."""
     from .dns import BeaconDNS
     cfg = load_config()
-    dns = BeaconDNS(base_url=_cfg_get(cfg, "dns", "base_url", default="http://50.28.86.131:8070/beacon"))
+    dns = BeaconDNS(base_url=_cfg_get(cfg, "dns", "base_url", default="https://rustchain.org/beacon"))
     name = args.name
     agent_id = args.agent_id
     owner = getattr(args, "owner", "") or ""
@@ -4058,7 +4058,7 @@ def cmd_dns_list(args: argparse.Namespace) -> int:
     """List all registered DNS names."""
     from .dns import BeaconDNS
     cfg = load_config()
-    dns = BeaconDNS(base_url=_cfg_get(cfg, "dns", "base_url", default="http://50.28.86.131:8070/beacon"))
+    dns = BeaconDNS(base_url=_cfg_get(cfg, "dns", "base_url", default="https://rustchain.org/beacon"))
     if getattr(args, "dry_run", False):
         print(json.dumps({"action": "dns_list"}))
         return 0
@@ -4377,7 +4377,7 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
 
     cfg = load_config()
     api_base_url = getattr(args, "api_base_url", None) or _cfg_get(
-        cfg, "dashboard", "api_base_url", default="http://50.28.86.131:8071"
+        cfg, "dashboard", "api_base_url", default="https://rustchain.org/beacon/api"
     )
     api_poll_interval = float(
         getattr(args, "api_poll_interval", None)

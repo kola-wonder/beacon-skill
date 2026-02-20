@@ -249,7 +249,7 @@ beacon discord send --kind bounty --text "New Windows miner bounty live" --rtc 1
 beacon dashboard
 
 # Launch with live Beacon API snapshot + initial filter
-beacon dashboard --api-base-url http://50.28.86.131:8071 --filter bounty
+beacon dashboard --api-base-url https://rustchain.org/beacon/api --filter bounty
 
 # In-dashboard commands (input box):
 # /filter <text>         set search filter

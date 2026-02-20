@@ -232,7 +232,7 @@ RATE_LIMIT = {}  # ip -> last_request_time
 RATE_LIMIT_SECONDS = 3  # min seconds between requests per IP
 
 # --- LLM Configuration ---
-OLLAMA_URL = "http://100.75.100.89:11434/api/chat"
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/chat")
 MODEL = "glm4:9b"
 FALLBACK_MODEL = "llama3.2:latest"
 MAX_HISTORY = 6  # max previous messages to include
@@ -1154,7 +1154,7 @@ def well_known_beacon():
         },
         "crypto": "Ed25519" if HAS_NACL else "unavailable (install PyNaCl)",
         "operator": "Elyan Labs",
-        "atlas_url": "http://50.28.86.131:8070/beacon/",
+        "atlas_url": "https://rustchain.org/beacon/",
     })
 
 

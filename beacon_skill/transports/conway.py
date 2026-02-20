@@ -300,7 +300,7 @@ class ConwayClient:
         caps = {
             "rustchain_rtc": {
                 "accepted": True,
-                "node": "https://50.28.86.131",
+                "node": "https://rustchain.org",
                 "reference_rate_usd": 0.10,
             },
             "x402_usdc": {
