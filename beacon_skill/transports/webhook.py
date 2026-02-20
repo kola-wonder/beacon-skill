@@ -2,16 +2,17 @@
 
 import json
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Dict, Optional
 
 import requests
 
-from ..codec import decode_envelopes, encode_envelope, verify_envelope
+from ..codec import decode_envelopes, verify_envelope
+from ..guard import check_envelope_window
 from ..identity import AgentIdentity
-from ..inbox import load_known_keys, _learn_key_from_envelope, save_known_keys
+from ..inbox import _learn_key_from_envelope, load_known_keys, save_known_keys
 from ..storage import append_jsonl
-import time
 
 
 class WebhookHandler(BaseHTTPRequestHandler):
@@ -49,35 +50,62 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self._send_json(404, {"error": "Not found"})
 
     def do_POST(self) -> None:
-        if self.path == "/beacon/inbox":
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length).decode("utf-8", errors="replace")
+        if self.path != "/beacon/inbox":
+            self._send_json(404, {"error": "Not found"})
+            return
 
-            # Try to parse as JSON (envelope or raw text).
-            envelopes = []
-            try:
-                data = json.loads(body)
-                if isinstance(data, dict) and "kind" in data:
-                    # Single envelope object.
-                    envelopes = [data]
-                elif isinstance(data, dict) and "text" in data:
-                    # Wrapped text with embedded envelopes.
-                    envelopes = decode_envelopes(data["text"])
-                elif isinstance(data, list):
-                    envelopes = data
-            except json.JSONDecodeError:
-                # Try raw text with embedded envelopes.
-                envelopes = decode_envelopes(body)
+        content_length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_length).decode("utf-8", errors="replace")
 
-            if not envelopes:
-                self._send_json(400, {"error": "No beacon envelopes found"})
-                return
+        # Try to parse as JSON (envelope or raw text).
+        envelopes = []
+        try:
+            data = json.loads(body)
+            if isinstance(data, dict) and "kind" in data:
+                # Single envelope object.
+                envelopes = [data]
+            elif isinstance(data, dict) and "text" in data:
+                # Wrapped text with embedded envelopes.
+                envelopes = decode_envelopes(data["text"])
+            elif isinstance(data, list):
+                envelopes = data
+        except json.JSONDecodeError:
+            # Try raw text with embedded envelopes.
+            envelopes = decode_envelopes(body)
 
-            known_keys = load_known_keys()
-            results = []
-            for env in envelopes:
-                _learn_key_from_envelope(env, known_keys)
-                verified = verify_envelope(env, known_keys=known_keys)
+        if not envelopes:
+            self._send_json(400, {"error": "No beacon envelopes found"})
+            return
+
+        known_keys = load_known_keys()
+        results = []
+        accepted = 0
+
+        for env in envelopes:
+            _learn_key_from_envelope(env, known_keys)
+            verified = verify_envelope(env, known_keys=known_keys)
+
+            nonce = str(env.get("nonce") or "")
+            kind = str(env.get("kind") or "")
+            signed = bool(env.get("sig"))
+
+            accepted_env = False
+            reason = "ok"
+
+            # Invariant: invalid signature must be rejected.
+            if verified is False:
+                reason = "signature_invalid"
+            else:
+                # For signed envelopes, enforce freshness + replay protection.
+                if signed:
+                    ok, reason = check_envelope_window(env)
+                    accepted_env = ok
+                else:
+                    # Legacy unsigned envelopes are still accepted for backward compatibility.
+                    accepted_env = True
+                    reason = "legacy_unsigned"
+
+            if accepted_env:
                 record = {
                     "platform": "webhook",
                     "from": self.client_address[0],
@@ -86,17 +114,25 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     "envelopes": [env],
                 }
                 append_jsonl("inbox.jsonl", record)
-                results.append({
-                    "nonce": env.get("nonce", ""),
-                    "kind": env.get("kind", ""),
-                    "verified": verified,
-                })
-            save_known_keys(known_keys)
+                accepted += 1
 
-            self._send_json(200, {"ok": True, "received": len(results), "results": results})
+            results.append(
+                {
+                    "nonce": nonce,
+                    "kind": kind,
+                    "verified": verified,
+                    "accepted": accepted_env,
+                    "reason": reason,
+                }
+            )
+
+        save_known_keys(known_keys)
+
+        if accepted == 0:
+            self._send_json(400, {"ok": False, "received": 0, "results": results, "error": "no_valid_envelopes"})
             return
 
-        self._send_json(404, {"error": "Not found"})
+        self._send_json(200, {"ok": True, "received": accepted, "results": results})
 
 
 class WebhookServer:

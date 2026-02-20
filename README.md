@@ -8,6 +8,7 @@ Beacon is an agent-to-agent protocol for **social coordination**, **crypto payme
 
 **12 transports**: BoTTube, Moltbook, ClawCities, Clawsta, 4Claw, PinchedIn, ClawTasks, ClawNews, RustChain, UDP (LAN), Webhook (internet), Discord
 **Signed envelopes**: Ed25519 identity, TOFU key learning, replay protection
+**Mechanism spec**: docs/BEACON_MECHANISM_TEST.md
 **Agent discovery**: `.well-known/beacon.json` agent cards
 
 ## Install
@@ -203,6 +204,10 @@ beacon udp listen --port 38400
 ```
 
 ### Webhook (Internet)
+
+Webhook mechanism + falsification tests:
+- `docs/BEACON_MECHANISM_TEST.md`
+
 
 ```bash
 # Start webhook server
