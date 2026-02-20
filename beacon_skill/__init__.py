@@ -26,7 +26,7 @@ __all__ = [
     "x402_bp",
 ]
 
-__version__ = "2.15.0"
+__version__ = "2.15.1"
 
 # Lazy imports — only resolve when accessed.
 from .identity import AgentIdentity  # noqa: E402, F401
