@@ -40,5 +40,12 @@ from .relay import RelayAgent, RelayManager  # noqa: E402, F401
 from .atlas_ping import atlas_ping  # noqa: E402, F401
 from .memory_market import KnowledgeShard, MemoryMarketManager  # noqa: E402, F401
 from .hybrid_district import HybridDistrict, HybridManager  # noqa: E402, F401
-from .compute_marketplace import compute_bp  # noqa: E402, F401
-from .x402_bridge import x402_bp  # noqa: E402, F401
+try:
+    from .compute_marketplace import compute_bp  # noqa: E402, F401
+except ImportError:
+    compute_bp = None
+    
+try:
+    from .x402_bridge import x402_bp  # noqa: E402, F401
+except ImportError:
+    x402_bp = None
