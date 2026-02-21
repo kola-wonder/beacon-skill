@@ -1703,6 +1703,14 @@ def relay_ping():
     row = db.execute("SELECT * FROM relay_agents WHERE agent_id = ?", (agent_id,)).fetchone()
 
     if row:
+        # BEP-2 Security: Verify relay token for existing agents to prevent impersonation
+        auth = request.headers.get("Authorization", "")
+        if not auth.startswith("Bearer "):
+            return cors_json({"error": "Authentication required for existing agent"}, 401)
+        token = auth[7:].strip()
+        if row["relay_token"] != token:
+            return cors_json({"error": "Invalid relay token"}, 403)
+
         new_beat = row["beat_count"] + 1
         meta = json.loads(row["metadata"] or "{}")
         if health_data:
