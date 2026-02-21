@@ -1100,6 +1100,15 @@ def relay_message():
     if not agent_id or not envelope:
         return cors_json({"error": "agent_id and envelope required"}, 400)
 
+    ip = get_real_ip()
+    now = time.time()
+
+    # Rate limit: 3s cooldown between messages from same IP
+    if ip in RATE_LIMIT and (now - RATE_LIMIT[ip]) < RATE_LIMIT_SECONDS:
+        return cors_json({"error": "Rate limited. Wait a moment."}, 429)
+    RATE_LIMIT[ip] = now
+        return cors_json({"error": "agent_id and envelope required"}, 400)
+
     # Authenticate
     db = get_db()
     row = db.execute("SELECT * FROM relay_agents WHERE agent_id = ?", (agent_id,)).fetchone()
@@ -1698,6 +1707,11 @@ def relay_ping():
 
     ip = get_real_ip()
     now = time.time()
+
+    # Rate limit: 3s cooldown between pings from same IP
+    if ip in RATE_LIMIT and (now - RATE_LIMIT[ip]) < RATE_LIMIT_SECONDS:
+        return cors_json({"error": "Rate limited. Wait a moment."}, 429)
+    RATE_LIMIT[ip] = now
 
     db = get_db()
     row = db.execute("SELECT * FROM relay_agents WHERE agent_id = ?", (agent_id,)).fetchone()
