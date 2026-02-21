@@ -54,7 +54,11 @@ class WebhookHandler(BaseHTTPRequestHandler):
             self._send_json(404, {"error": "Not found"})
             return
 
+        MAX_BODY_SIZE = 1_048_576  # 1 MB
         content_length = int(self.headers.get("Content-Length", 0))
+        if content_length > MAX_BODY_SIZE:
+            self._send_json(413, {"error": "Payload too large"})
+            return
         body = self.rfile.read(content_length).decode("utf-8", errors="replace")
 
         # Try to parse as JSON (envelope or raw text).

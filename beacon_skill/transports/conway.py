@@ -191,6 +191,21 @@ class ConwayClient:
         """Fetch and parse a Conway agent card from its URI."""
         if not uri.startswith("http"):
             return None
+        # SSRF prevention: block private/internal network requests
+        try:
+            from urllib.parse import urlparse
+            import ipaddress
+            hostname = urlparse(uri).hostname or ""
+            if hostname in ("localhost", ""):
+                return None
+            try:
+                ip = ipaddress.ip_address(hostname)
+                if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                    return None
+            except ValueError:
+                pass  # hostname, not IP — allow DNS
+        except Exception:
+            return None
         try:
             resp = self._session.get(uri, timeout=self._timeout)
             resp.raise_for_status()

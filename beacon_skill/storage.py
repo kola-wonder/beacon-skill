@@ -10,15 +10,26 @@ def _dir() -> Path:
     return d
 
 
+def _safe_path(name: str) -> Path:
+    """Resolve a storage name to a path, preventing directory traversal."""
+    if "/" in name or "\\" in name or name.startswith("."):
+        raise ValueError(f"Invalid storage name: {name!r}")
+    path = (_dir() / name).resolve()
+    base = _dir().resolve()
+    if not str(path).startswith(str(base)):
+        raise ValueError(f"Path traversal detected: {name!r}")
+    return path
+
+
 def append_jsonl(name: str, item: Dict[str, Any]) -> None:
-    path = _dir() / name
+    path = _safe_path(name)
     with path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(item, sort_keys=True) + "\n")
 
 
 def read_jsonl(name: str) -> List[Dict[str, Any]]:
     """Read all entries from a JSONL file."""
-    path = _dir() / name
+    path = _safe_path(name)
     if not path.exists():
         return []
     results = []
@@ -66,7 +77,7 @@ def set_last_ts(key: str, ts: Optional[float] = None) -> None:
 
 def jsonl_count(name: str) -> int:
     """Count entries in a JSONL file."""
-    path = _dir() / name
+    path = _safe_path(name)
     if not path.exists():
         return 0
     count = 0
@@ -78,7 +89,7 @@ def jsonl_count(name: str) -> int:
 
 def read_jsonl_tail(name: str, limit: int = 1000) -> List[Dict[str, Any]]:
     """Read the last N entries from a JSONL file efficiently."""
-    path = _dir() / name
+    path = _safe_path(name)
     if not path.exists():
         return []
     lines = path.read_text(encoding="utf-8").splitlines()
@@ -96,7 +107,7 @@ def read_jsonl_tail(name: str, limit: int = 1000) -> List[Dict[str, Any]]:
 
 def read_json(name: str) -> Dict[str, Any]:
     """Read a JSON file from the beacon directory."""
-    path = _dir() / name
+    path = _safe_path(name)
     if not path.exists():
         return {}
     try:
@@ -107,6 +118,6 @@ def read_json(name: str) -> Dict[str, Any]:
 
 def write_json(name: str, data: Dict[str, Any]) -> None:
     """Write a JSON file to the beacon directory."""
-    path = _dir() / name
+    path = _safe_path(name)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")

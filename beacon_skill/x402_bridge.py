@@ -192,7 +192,7 @@ def _verify_rtc_payment(rtc_header: str, service_key: str) -> Dict[str, Any]:
             f"https://rustchain.org/wallet/balance",
             params={"miner_id": data.get("from_wallet", "")},
             headers={"X-Admin-Key": os.environ.get("RC_ADMIN_KEY", "")},
-            verify=False,
+            verify=True,
             timeout=10,
         )
         if resp.ok:

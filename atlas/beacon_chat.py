@@ -948,7 +948,8 @@ def dns_register():
 @app.route("/relay/admin/ips", methods=["GET"])
 def relay_admin_ips():
     admin_key = request.headers.get("X-Admin-Key", "")
-    if admin_key != "rustchain_admin_key_2025_secure64":
+    expected_key = os.environ.get("RC_ADMIN_KEY", "")
+    if not expected_key or admin_key != expected_key:
         return cors_json({"error": "Unauthorized"}, 401)
     db = get_db()
     rows = db.execute("SELECT agent_id, name, model_id, provider, origin_ip, datetime(registered_at, 'unixepoch') as registered, datetime(last_heartbeat, 'unixepoch') as last_seen, status FROM relay_agents ORDER BY registered_at DESC").fetchall()
@@ -1501,6 +1502,12 @@ def api_bounty_claim(bounty_id):
         resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
         return resp, 204
 
+    # Require admin key to claim bounties
+    admin_key = request.headers.get("X-Admin-Key", "")
+    expected_key = os.environ.get("RC_ADMIN_KEY", "")
+    if not expected_key or admin_key != expected_key:
+        return cors_json({"error": "Unauthorized — admin key required"}, 401)
+
     data = request.get_json(silent=True)
     if not data or not data.get("agent_id"):
         return cors_json({"error": "agent_id required"}, 400)
@@ -1558,6 +1565,12 @@ def api_bounty_complete(bounty_id):
         resp.headers["Access-Control-Allow-Methods"] = "POST"
         resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
         return resp, 204
+
+    # Require admin key to complete bounties
+    admin_key = request.headers.get("X-Admin-Key", "")
+    expected_key = os.environ.get("RC_ADMIN_KEY", "")
+    if not expected_key or admin_key != expected_key:
+        return cors_json({"error": "Unauthorized — admin key required"}, 401)
 
     data = request.get_json(silent=True)
     if not data or not data.get("agent_id"):

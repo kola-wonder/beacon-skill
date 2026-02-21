@@ -50,8 +50,27 @@ def cfg():
 # ---------------------------------------------------------------------------
 
 
+def _is_safe_url(url):
+    """Block requests to private/internal networks (SSRF prevention)."""
+    from urllib.parse import urlparse
+    import ipaddress
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+    if hostname in ("localhost", ""):
+        return False
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            return False
+    except ValueError:
+        pass  # hostname, not IP — allow DNS resolution
+    return parsed.scheme in ("http", "https")
+
+
 def _fetch(url, timeout=8):
     """GET url, return (ok, json_or_none)."""
+    if not _is_safe_url(url):
+        return False, None
     try:
         r = requests.get(url, timeout=timeout, verify=True)
         if r.ok:
@@ -252,10 +271,18 @@ def build_dashboard_data():
     network = fetch_network_stats()
     beacon_count = fetch_beacon_count()
 
+    import re
+    _hex_color = re.compile(r'^#[0-9a-fA-F]{3,8}$')
+
     agents_data = []
     for agent in config.get("agents", []):
         result = score_agent(agent)
-        agents_data.append({**agent, **result})
+        # Sanitize color to prevent CSS injection
+        color = agent.get("color", "#33ff33")
+        if not _hex_color.match(color):
+            color = "#33ff33"
+        agent_copy = {**agent, "color": color}
+        agents_data.append({**agent_copy, **result})
 
     # Sort by total score descending
     agents_data.sort(key=lambda a: a["total"], reverse=True)
